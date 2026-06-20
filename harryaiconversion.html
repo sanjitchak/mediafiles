@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Director's Cut — Day 2 Conversion Teardown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A1613;
+    --ink-soft:#2A2520;
+    --paper:#F4F2ED;
+    --paper-raised:#FBFAF6;
+    --line:#DAD5CB;
+    --muted:#6F665A;
+    --muted-2:#928876;
+    --gold:#B5832B;
+    --gold-bright:#D8A23C;
+    --red:#A93A2C;
+    --red-soft:#F2E2DD;
+    --green:#3D6657;
+    --green-soft:#E0EAE3;
+    --shadow:0 1px 2px rgba(26,22,19,.04),0 8px 30px rgba(26,22,19,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Newsreader',Georgia,serif;
+    font-size:18px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:0 28px}
+
+  /* ---------- type helpers ---------- */
+  .eyebrow{
+    font-family:'Archivo',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  .tc{
+    font-family:'Archivo',sans-serif;
+    font-weight:600;
+    font-size:12.5px;
+    letter-spacing:.12em;
+    font-variant-numeric:tabular-nums;
+    color:var(--muted-2);
+  }
+  h1,h2,h3,h4{font-family:'Archivo',sans-serif;line-height:1.04;letter-spacing:-.01em}
+
+  /* ---------- masthead ---------- */
+  .mast{
+    background:var(--ink);
+    color:var(--paper);
+    padding:78px 0 64px;
+    position:relative;
+    overflow:hidden;
+  }
+  .mast::before{
+    content:"";position:absolute;inset:0;
+    background:
+      repeating-linear-gradient(90deg,rgba(255,255,255,.028) 0 1px,transparent 1px 56px);
+    opacity:.5;
+  }
+  .mast::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:5px;
+    background:linear-gradient(90deg,var(--red) 0 33%,var(--gold) 33% 66%,var(--green) 66% 100%);
+  }
+  .mast .wrap{position:relative;z-index:1}
+  .slate{
+    display:flex;align-items:center;gap:14px;margin-bottom:30px;
+    font-family:'Archivo',sans-serif;font-size:11.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:rgba(244,242,237,.55);font-weight:600;
+  }
+  .slate .dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(169,58,44,.18)}
+  .slate .sep{flex:1;height:1px;background:rgba(244,242,237,.16)}
+  .mast h1{
+    font-weight:900;
+    font-size:clamp(40px,7.4vw,82px);
+    letter-spacing:-.025em;
+    margin-bottom:22px;
+  }
+  .mast h1 .em{color:var(--gold-bright)}
+  .mast .lede{
+    font-family:'Newsreader',serif;
+    font-size:clamp(18px,2.4vw,23px);
+    color:rgba(244,242,237,.82);
+    max-width:680px;
+    line-height:1.5;
+  }
+  .mast .lede b{color:var(--paper);font-weight:600}
+
+  /* ---------- reveal stat ---------- */
+  .reveal{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:24px;
+    margin-top:54px;padding:30px;border:1px solid rgba(244,242,237,.16);
+    border-radius:14px;background:rgba(244,242,237,.03);
+  }
+  .reveal .cell{text-align:center}
+  .reveal .k{
+    font-family:'Archivo',sans-serif;font-weight:800;
+    font-size:clamp(44px,8vw,72px);line-height:.9;letter-spacing:-.03em;
+    font-variant-numeric:tabular-nums;
+  }
+  .reveal .cell.now .k{color:rgba(244,242,237,.55)}
+  .reveal .cell.goal .k{color:var(--gold-bright)}
+  .reveal .lab{
+    font-family:'Archivo',sans-serif;font-weight:600;font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;margin-top:12px;
+    color:rgba(244,242,237,.5);
+  }
+  .reveal .sub{font-size:13.5px;color:rgba(244,242,237,.45);margin-top:5px;font-family:'Newsreader',serif}
+  .reveal .arrow{color:var(--gold);font-family:'Archivo',sans-serif;font-weight:800;font-size:30px}
+  @media(max-width:620px){
+    .reveal{grid-template-columns:1fr;gap:18px;text-align:center}
+    .reveal .arrow{transform:rotate(90deg)}
+  }
+
+  /* ---------- verdict band ---------- */
+  .verdict{background:var(--ink-soft);color:var(--paper);padding:34px 0;border-bottom:1px solid rgba(244,242,237,.08)}
+  .verdict .wrap{display:flex;gap:30px;align-items:center;flex-wrap:wrap}
+  .verdict .tag{
+    font-family:'Archivo',sans-serif;font-weight:800;letter-spacing:.04em;
+    font-size:13px;text-transform:uppercase;color:var(--ink);
+    background:var(--gold-bright);padding:9px 16px;border-radius:6px;white-space:nowrap;
+  }
+  .verdict p{font-size:17px;color:rgba(244,242,237,.85);flex:1;min-width:280px}
+  .verdict p b{color:var(--paper);font-weight:600}
+
+  /* ---------- section frame ---------- */
+  section{padding:72px 0}
+  section + section{border-top:1px solid var(--line)}
+  .shead{margin-bottom:40px;max-width:760px}
+  .shead .num{
+    font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;
+    color:var(--gold);letter-spacing:.14em;
+  }
+  .shead h2{
+    font-weight:800;font-size:clamp(28px,4.6vw,44px);margin:14px 0 16px;
+    letter-spacing:-.02em;
+  }
+  .shead p{color:var(--muted);font-size:18px}
+  .shead p b{color:var(--ink);font-weight:600}
+
+  /* ---------- leak leaderboard ---------- */
+  .leaks{display:grid;gap:14px}
+  .leak{
+    display:grid;grid-template-columns:54px 1fr;gap:20px;align-items:start;
+    background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;box-shadow:var(--shadow);
+  }
+  .leak .rank{
+    font-family:'Archivo',sans-serif;font-weight:900;font-size:34px;
+    color:var(--ink);line-height:1;letter-spacing:-.03em;
+    border-right:1px solid var(--line);padding-right:18px;height:100%;
+  }
+  .leak h3{font-size:19px;font-weight:700;margin-bottom:6px}
+  .leak p{font-size:16px;color:var(--muted)}
+  .leak.sev1 .rank{color:var(--red)}
+
+  /* ---------- category groups ---------- */
+  .cat{margin-top:46px}
+  .cat:first-of-type{margin-top:0}
+  .cat-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+  .cat-head .letter{font-family:'Archivo',sans-serif;font-weight:900;font-size:22px;color:var(--red)}
+  .cat-head h3{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .cat-head .note{margin-left:auto;font-size:13px;color:var(--muted-2);font-style:italic}
+
+  .item{
+    display:grid;grid-template-columns:40px 1fr;gap:18px;
+    padding:18px 0;border-bottom:1px solid var(--line);
+  }
+  .item:last-child{border-bottom:none}
+  .item .ix{
+    font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;
+    color:var(--muted-2);font-variant-numeric:tabular-nums;padding-top:3px;
+  }
+  .item .body h4{font-size:17.5px;font-weight:700;margin-bottom:5px;line-height:1.28}
+  .item .body p{font-size:16px;color:var(--muted)}
+  .item .body p b{color:var(--ink-soft);font-weight:600}
+  .pill{
+    display:inline-block;font-family:'Archivo',sans-serif;font-weight:700;
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;
+  }
+  .pill.hi{background:var(--red-soft);color:var(--red)}
+  .pill.md{background:#F3EBD8;color:var(--gold)}
+
+  /* ---------- right list ---------- */
+  .keep{background:var(--green-soft)}
+  .keep .shead .num,.keep .cat-head .letter{color:var(--green)}
+  .keep-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .keep-card{
+    background:var(--paper-raised);border:1px solid #CDDDD3;border-radius:12px;
+    padding:20px 22px;position:relative;box-shadow:var(--shadow);
+  }
+  .keep-card::before{
+    content:"✓";position:absolute;top:18px;right:20px;
+    font-family:'Archivo',sans-serif;font-weight:800;color:var(--green);font-size:18px;
+  }
+  .keep-card h4{font-size:16.5px;font-weight:700;margin-bottom:6px;padding-right:24px}
+  .keep-card p{font-size:14.5px;color:var(--muted)}
+  @media(max-width:640px){.keep-grid{grid-template-columns:1fr}}
+
+  /* ---------- runtime timeline (signature) ---------- */
+  .runtime{background:var(--ink);color:var(--paper)}
+  .runtime .shead h2{color:var(--paper)}
+  .runtime .shead .num{color:var(--gold-bright)}
+  .runtime .shead p{color:rgba(244,242,237,.62)}
+  .runtime .shead p b{color:var(--paper)}
+  .timeline{position:relative;margin-top:20px;padding-left:0}
+  .seg{
+    display:grid;grid-template-columns:118px 1fr;gap:26px;
+    padding:24px 0;border-top:1px solid rgba(244,242,237,.12);
+  }
+  .seg:last-child{border-bottom:1px solid rgba(244,242,237,.12)}
+  .seg .time{position:relative}
+  .seg .time .tc{color:var(--gold-bright);font-size:14px}
+  .seg .time .dur{display:block;margin-top:5px;font-family:'Newsreader',serif;font-size:12.5px;color:rgba(244,242,237,.4)}
+  .seg .meat h3{font-size:18.5px;font-weight:700;color:var(--paper);margin-bottom:9px}
+  .seg .meat ul{list-style:none;display:grid;gap:7px}
+  .seg .meat li{font-size:15.5px;color:rgba(244,242,237,.78);padding-left:18px;position:relative;line-height:1.5}
+  .seg .meat li::before{content:"";position:absolute;left:0;top:11px;width:7px;height:1.5px;background:var(--gold)}
+  .seg .meat li b{color:var(--paper);font-weight:600}
+  @media(max-width:620px){.seg{grid-template-columns:1fr;gap:10px}}
+
+  /* ---------- before/after ---------- */
+  .ba{display:grid;gap:24px}
+  .ba-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);background:var(--paper-raised)}
+  .ba-card .label{
+    font-family:'Archivo',sans-serif;font-weight:700;font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;padding:14px 24px;color:var(--muted);background:var(--paper);
+    border-bottom:1px solid var(--line);
+  }
+  .ba-row{display:grid;grid-template-columns:1fr 1fr}
+  .ba-row > div{padding:22px 24px}
+  .ba-row .before{border-right:1px solid var(--line)}
+  .ba-row .tagline{
+    font-family:'Archivo',sans-serif;font-weight:700;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;
+  }
+  .ba-row .before .tagline{color:var(--red)}
+  .ba-row .after .tagline{color:var(--green)}
+  .ba-row p{font-size:15.5px;color:var(--ink-soft);line-height:1.55}
+  .ba-row .before p{color:var(--muted)}
+  @media(max-width:640px){
+    .ba-row{grid-template-columns:1fr}
+    .ba-row .before{border-right:none;border-bottom:1px solid var(--line)}
+  }
+
+  /* ---------- math ---------- */
+  .math{background:var(--paper-raised)}
+  .math-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:30px}
+  .mcard{border:1px solid var(--line);border-radius:12px;padding:24px;text-align:center;background:var(--paper)}
+  .mcard.win{border-color:var(--gold);background:linear-gradient(180deg,#FBF4E4,var(--paper-raised))}
+  .mcard .pct{font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;letter-spacing:.04em;color:var(--muted-2)}
+  .mcard.win .pct{color:var(--gold)}
+  .mcard .sales{font-family:'Archivo',sans-serif;font-weight:900;font-size:42px;letter-spacing:-.03em;margin:8px 0 4px;font-variant-numeric:tabular-nums}
+  .mcard.win .sales{color:var(--ink)}
+  .mcard .cap{font-size:13.5px;color:var(--muted)}
+  .math .kicker{
+    font-size:18px;text-align:center;color:var(--ink-soft);max-width:680px;margin:0 auto;
+    padding:22px 26px;border-left:3px solid var(--gold);background:var(--paper);border-radius:0 10px 10px 0;
+  }
+  .math .kicker b{color:var(--ink);font-weight:600}
+  @media(max-width:640px){.math-grid{grid-template-columns:1fr}}
+
+  /* ---------- priority ---------- */
+  .priority{background:var(--ink);color:var(--paper)}
+  .priority .shead h2{color:var(--paper)}
+  .priority .shead .num{color:var(--gold-bright)}
+  .plist{counter-reset:p;display:grid;gap:2px}
+  .pstep{
+    display:grid;grid-template-columns:64px 1fr;align-items:center;gap:20px;
+    padding:20px 0;border-bottom:1px solid rgba(244,242,237,.1);
+  }
+  .pstep::before{
+    counter-increment:p;content:counter(p,decimal-leading-zero);
+    font-family:'Archivo',sans-serif;font-weight:900;font-size:30px;
+    color:var(--gold-bright);font-variant-numeric:tabular-nums;
+  }
+  .pstep .t{font-family:'Archivo',sans-serif;font-weight:600;font-size:17.5px;color:var(--paper)}
+  .pstep .t span{display:block;font-family:'Newsreader',serif;font-weight:400;font-size:14.5px;color:rgba(244,242,237,.55);margin-top:3px}
+  .pstep.first .t::after{
+    content:"START HERE";font-family:'Archivo',sans-serif;font-weight:700;font-size:10px;
+    letter-spacing:.14em;color:var(--ink);background:var(--gold-bright);
+    padding:3px 8px;border-radius:4px;margin-left:12px;vertical-align:middle;display:inline-block;
+  }
+
+  /* ---------- footer ---------- */
+  footer{background:var(--ink-soft);color:rgba(244,242,237,.5);padding:40px 0;text-align:center;font-size:13.5px;font-family:'Archivo',sans-serif;letter-spacing:.04em}
+  footer b{color:rgba(244,242,237,.8);font-weight:600}
+
+  /* ---------- load animation ---------- */
+  .fade{opacity:0;transform:translateY(14px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+  .d1{animation-delay:.05s}.d2{animation-delay:.16s}.d3{animation-delay:.28s}.d4{animation-delay:.4s}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.fade{animation:none;opacity:1;transform:none}}
+
+  /* ---------- print ---------- */
+  @media print{
+    body{background:#fff;font-size:12pt}
+    .mast,.runtime,.priority{background:#fff !important;color:#000 !important}
+    .mast h1,.runtime .shead h2,.priority .shead h2{color:#000 !important}
+    .reveal,.seg,.pstep{border-color:#ccc !important}
+    .mast .lede,.seg .meat li,.pstep .t{color:#222 !important}
+    section{padding:24px 0;page-break-inside:avoid}
+    .fade{animation:none;opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ MASTHEAD ============ -->
+<header class="mast">
+  <div class="wrap">
+    <div class="slate fade d1">
+      <span class="dot"></span>
+      <span>Conversion Teardown</span>
+      <span class="sep"></span>
+      <span>AI Filmmaking Cohort · Day 2</span>
+    </div>
+    <h1 class="fade d2">The Director's<br>Cut<span class="em">.</span></h1>
+    <p class="lede fade d3">
+      You do not have a structure problem. You have a <b>closing</b> problem.
+      Your webinar spends two hours building desire, then hands everyone a free
+      exit at the exact moment it needs commitment. Here is the ruthless edit.
+    </p>
+
+    <div class="reveal fade d4">
+      <div class="cell now">
+        <div class="k">8%</div>
+        <div class="lab">Current Cut</div>
+        <div class="sub">~64 of 800 showups</div>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="cell goal">
+        <div class="k">15&ndash;20%</div>
+        <div class="lab">Director's Cut</div>
+        <div class="sub">120 to 160 sales</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ VERDICT ============ -->
+<div class="verdict">
+  <div class="wrap">
+    <span class="tag">Template: Dan Henry</span>
+    <p>
+      You already run the Anik / Brunson slide skeleton (three choices, bonus stack, value anchoring).
+      A layout is not your gap. <b>Dan Henry's conversion mechanics are:</b> one belief, a named mechanism,
+      a controlled gap, and a real close. That is what this teardown rebuilds. Anik is used only as the pacing clock.
+    </p>
+  </div>
+</div>
+
+<!-- ============ THE FOUR LEAKS ============ -->
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 01</div>
+      <h2>The four leaks, ranked by what they cost you</h2>
+      <p>Fix one and two alone and you should clear 12%. All four together is how you reach the target.</p>
+    </div>
+    <div class="leaks">
+      <div class="leak sev1">
+        <div class="rank">1</div>
+        <div>
+          <h3>You close to a call, not a purchase</h3>
+          <p>Your CTA is "pay 1,999, get on the 5PM qualification call, pay the rest later." That is a second sales event you have to win again. Three steps where Dan Henry demands one: one link, one action.</p>
+        </div>
+      </div>
+      <div class="leak">
+        <div class="rank">2</div>
+        <div>
+          <h3>You give away the full how-to</h3>
+          <p>You teach the complete multi-angle, character-replacement and product-replacement workflows, prompts included. People leave self-sufficient. Give the aha, never the execution.</p>
+        </div>
+      </div>
+      <div class="leak">
+        <div class="rank">3</div>
+        <div>
+          <h3>No single big idea, no named mechanism</h3>
+          <p>You sell eight opportunities at once. Scatter equals no conviction. There is nothing for them to believe in that only you can deliver.</p>
+        </div>
+      </div>
+      <div class="leak">
+        <div class="rank">4</div>
+        <div>
+          <h3>Weak open, diffused close, no real urgency</h3>
+          <p>No Day 2 promise, no reason to stay, no engineered deadline. The close ends on a borrowed "life is short" video instead of one decisive instruction.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHAT'S WRONG ============ -->
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 02 · CUT THESE</div>
+      <h2>What you are doing wrong</h2>
+      <p>Every item below is in your Day 2 script. Grouped by where the money leaks.</p>
+    </div>
+
+    <!-- A -->
+    <div class="cat">
+      <div class="cat-head">
+        <span class="letter">A</span>
+        <h3>Close &amp; offer mechanics</h3>
+        <span class="note">where most of the money is lost</span>
+      </div>
+      <div class="item"><div class="ix">01</div><div class="body">
+        <h4>The close is a call, not a sale<span class="pill hi">Top Leak</span></h4>
+        <p>Webinar to token to 5PM call to final payment. Each step bleeds people. For a 30k decision this roughly halves yield versus a direct close.</p></div></div>
+      <div class="item"><div class="ix">02</div><div class="body">
+        <h4>The "qualification" frame kills urgency<span class="pill hi">High</span></h4>
+        <p>Refundable, plus reversible, plus "you might be rejected." You handed them a free exit at the moment you needed commitment. Nobody decides later when later is free.</p></div></div>
+      <div class="item"><div class="ix">03</div><div class="body">
+        <h4>Urgency is asserted, not engineered<span class="pill md">Medium</span></h4>
+        <p>"It never comes back" and "we buy tools tonight" are claims with no on-screen mechanism. No timer, no visible seat cap, no price step.</p></div></div>
+      <div class="item"><div class="ix">04</div><div class="body">
+        <h4>Three competing value anchors</h4>
+        <p>2,35,000, then "tools alone are 30,000," then "83 rupees a day." They compete instead of compounding. Pick one dominant anchor.</p></div></div>
+      <div class="item"><div class="ix">05</div><div class="body">
+        <h4>The bonus values look invented</h4>
+        <p>35k for a certificate, 55k for a portfolio template. A skeptical buyer divides by ten. Inflated stacks that fail a sanity check reduce trust.</p></div></div>
+      <div class="item"><div class="ix">06</div><div class="body">
+        <h4>Objections handled late and defensively</h4>
+        <p>"You think your hour is worth only 300 rupees? Like seriously?" talks down to the buyer. Objections must be pre-killed inside the content, not argued after the price.</p></div></div>
+      <div class="item"><div class="ix">07</div><div class="body">
+        <h4>The charity-and-guilt line is manipulative</h4>
+        <p>"By booking a call you help hungry kids and dogs on the street," dropped at the close, reads as leverage and damages trust with analytical buyers. Cut it.</p></div></div>
+      <div class="item"><div class="ix">08</div><div class="body">
+        <h4>The closing video works against you</h4>
+        <p>The "life is short / live for the weekend" clip is existential, off-topic, not tied to acting now, and is borrowed copyright. Replace with a 60-second results montage and one instruction.</p></div></div>
+    </div>
+
+    <!-- B -->
+    <div class="cat">
+      <div class="cat-head">
+        <span class="letter">B</span>
+        <h3>The teaching block</h3>
+        <span class="note">your second biggest leak</span>
+      </div>
+      <div class="item"><div class="ix">09</div><div class="body">
+        <h4>You give away the complete how-to<span class="pill hi">High</span></h4>
+        <p>Full workflows with copy-paste prompts. The webinar should give the what and why, never the full how. You let people leave satisfied and self-sufficient.</p></div></div>
+      <div class="item"><div class="ix">10</div><div class="body">
+        <h4>You then destroy the value of what you sell</h4>
+        <p>"Students can do this in 5 to 10 minutes" and "my editing is shit." You proved the skill valuable, then proved it trivial. Pick one.</p></div></div>
+      <div class="item"><div class="ix">11</div><div class="body">
+        <h4>The content block runs far too long</h4>
+        <p>Your pitch does not begin until roughly 1:49. Anik's macro is 20 to 30 minutes of content. Yours is more than double, after which energy and attendance have dropped.</p></div></div>
+    </div>
+
+    <!-- C -->
+    <div class="cat">
+      <div class="cat-head">
+        <span class="letter">C</span>
+        <h3>Belief &amp; message architecture</h3>
+      </div>
+      <div class="item"><div class="ix">12</div><div class="body">
+        <h4>No single big idea<span class="pill md">Medium</span></h4>
+        <p>High-CTR creatives, thumbnails, PPM dockets, faceless channels, micro-dramas, real estate, UGC, Hollywood replacement. Dan Henry: the whole script is built on one belief.</p></div></div>
+      <div class="item"><div class="ix">13</div><div class="body">
+        <h4>You never name a mechanism</h4>
+        <p>"Workflows not tools" is close but never packaged into a named, ownable thing. Without a named mechanism there is nothing only you can deliver.</p></div></div>
+      <div class="item"><div class="ix">14</div><div class="body">
+        <h4>Your three "secrets" do not break beliefs</h4>
+        <p>They teach features. They should each kill one false belief: the vehicle, the internal, the external. So objections survive into the close.</p></div></div>
+      <div class="item"><div class="ix">15</div><div class="body">
+        <h4>The transformation promise is hedged</h4>
+        <p>"12 viral films" is an output. The real promise (you will land paying clients) is constantly softened with "even if you don't continue with me." Hedging reads as low conviction.</p></div></div>
+    </div>
+
+    <!-- D -->
+    <div class="cat">
+      <div class="cat-head">
+        <span class="letter">D</span>
+        <h3>Proof</h3>
+      </div>
+      <div class="item"><div class="ix">16</div><div class="body">
+        <h4>Proof is told, not shown</h4>
+        <p>8 lakh, a 12 lakh contract, 20 lakh MRR, 1.4 million views, all verbal and fast. At this density, unverified claims lower trust. Every number needs a screenshot.</p></div></div>
+      <div class="item"><div class="ix">17</div><div class="body">
+        <h4>Student proof has no result attached</h4>
+        <p>Film clips play with no on-screen maker, price, or before-and-after. Proof without a result is just content.</p></div></div>
+    </div>
+
+    <!-- E -->
+    <div class="cat">
+      <div class="cat-head">
+        <span class="letter">E</span>
+        <h3>Authority &amp; production</h3>
+        <span class="note">small things that compound</span>
+      </div>
+      <div class="item"><div class="ix">18</div><div class="body">
+        <h4>You break your own authority</h4>
+        <p>"Okay, fuck this," "battery's dead," "my editing is shit." Each one resets you to amateur in front of someone about to pay 30k.</p></div></div>
+      <div class="item"><div class="ix">19</div><div class="body">
+        <h4>The cancer remark reads as manipulation</h4>
+        <p>Pivoting from laughing emojis to "heard about an incident of cancer, heartbreaking" is confusing, off-topic guilt leverage. Cut it entirely.</p></div></div>
+      <div class="item"><div class="ix">20</div><div class="body">
+        <h4>Live tech fumbles during the close</h4>
+        <p>"I may have deleted the frames," a failing ChatGPT calculation on screen. Fumbling in the money section signals you are not in control. Pre-bake every demo.</p></div></div>
+      <div class="item"><div class="ix">21</div><div class="body">
+        <h4>Constant production checks waste energy</h4>
+        <p>"Is my audio audible," "is there echo," many times. It trains the audience to watch for problems. Test before, then stop asking.</p></div></div>
+      <div class="item"><div class="ix">22</div><div class="body">
+        <h4>No "who it's for / not for" and no commitment round</h4>
+        <p>You skip the free priming both templates open with: who it is for, who it is explicitly not for, and the agreements (open mind, take action, acknowledge the investment).</p></div></div>
+      <div class="item"><div class="ix">23</div><div class="body">
+        <h4>No re-hook, no reason to stay</h4>
+        <p>Day 2 opens with small talk into film review. No big promise, no three reasons to stay. Your only bribe (free tool access) is buried in one line.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHAT'S RIGHT ============ -->
+<section class="keep">
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 03 · KEEP THESE</div>
+      <h2>What you are doing right</h2>
+      <p>Do not touch these in the edit. They are working.</p>
+    </div>
+    <div class="keep-grid">
+      <div class="keep-card"><h4>The Day 1 to Day 2 film bridge</h4><p>Real output, made with you. Strong social proof in principle. Tighten it and attach a result to each clip.</p></div>
+      <div class="keep-card"><h4>The "three choices" frame</h4><p>Do nothing, DIY and suffer, or do it with me. Correct and well placed.</p></div>
+      <div class="keep-card"><h4>The week-by-week walk-through</h4><p>Eight weeks, each producing a real asset. Concrete and tangible. Add a proof shot beside each week.</p></div>
+      <div class="keep-card"><h4>The first-mover timing argument</h4><p>Headwind and tailwind. A genuinely good "act now" frame. Move it earlier and tie it to your one big idea.</p></div>
+      <div class="keep-card"><h4>The 1:1 call as golden-goose bonus</h4><p>The right instinct. Present it last and make access feel earned.</p></div>
+      <div class="keep-card"><h4>"Invest in the asset, which is you"</h4><p>Solid reframe. Deliver it before the price as a belief, not after as a rebuttal.</p></div>
+      <div class="keep-card"><h4>Live cohort, not recorded</h4><p>A real differentiator, said well. Lean into it harder as part of the mechanism.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE RUNTIME (signature) ============ -->
+<section class="runtime">
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 04 · THE NEW RUNTIME</div>
+      <h2>The fix, sequenced</h2>
+      <p>Dan Henry mechanics on the Anik pacing clock. Timecodes are targets for a 90 to 110 minute Day 2.</p>
+    </div>
+    <div class="timeline">
+
+      <div class="seg">
+        <div class="time"><span class="tc">00:00&ndash;08:00</span><span class="dur">Open &amp; re-hook</span></div>
+        <div class="meat">
+          <h3>Set the stakes before anything else</h3>
+          <ul>
+            <li>One-sentence Day 2 <b>big promise</b>: the exact method to turn AI films into paying clients.</li>
+            <li>Three real reasons to stay to the end, stated up front and reinforced twice.</li>
+            <li>Who this is for. Who it is <b>not</b> for. This frames and filters.</li>
+            <li>Commitment round: open mind, take action today, acknowledge the investment. Get a "I agree."</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="seg">
+        <div class="time"><span class="tc">08:00&ndash;16:00</span><span class="dur">Film review as proof</span></div>
+        <div class="meat">
+          <h3>Turn the review into evidence, not filler</h3>
+          <ul>
+            <li>Four to six clips maximum.</li>
+            <li>For each: show who made it, that it was their first film, and the result or use case.</li>
+            <li>Cut every "drop a heart" and every audio check.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="seg">
+        <div class="time"><span class="tc">16:00&ndash;24:00</span><span class="dur">One idea, one mechanism</span></div>
+        <div class="meat">
+          <h3>Name the thing they can only get from you</h3>
+          <ul>
+            <li><b>Single belief:</b> winners reverse-engineer what already went viral and recreate it on demand.</li>
+            <li><b>Name the mechanism</b> so it sounds new and ownable, for example "The Recreation Method."</li>
+            <li>Stop selling eight opportunities. Sell one method that unlocks many.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="seg">
+        <div class="time"><span class="tc">24:00&ndash;50:00</span><span class="dur">Three secrets</span></div>
+        <div class="meat">
+          <h3>Three secrets that break three beliefs (give the aha, not the how)</h3>
+          <ul>
+            <li><b>Secret 1 (vehicle):</b> the opportunity is real and huge right now. Timing plus market size. End on a result.</li>
+            <li><b>Secret 2 (internal):</b> you can do this without being technical. Recreation beats invention. End on a non-technical result.</li>
+            <li><b>Secret 3 (external):</b> no clients, product, money or time is fine. Show the paths. End on a from-nothing result.</li>
+            <li>After each: "Who wants the done-with-you version of this?"</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="seg">
+        <div class="time"><span class="tc">50:00&ndash;55:00</span><span class="dur">Transition</span></div>
+        <div class="meat">
+          <h3>The bridge, not a gear shift</h3>
+          <ul>
+            <li>"That was the what and why. The how, done with you every weekend, is next."</li>
+            <li>Then the three choices.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="seg">
+        <div class="time"><span class="tc">55:00&ndash;90:00</span><span class="dur">Offer &amp; close</span></div>
+        <div class="meat">
+          <h3>The seven-element close, in order</h3>
+          <ul>
+            <li><b>1 Bridge.</b> <b>2 Stack by outcome,</b> not line items. <b>3 Price</b> with one dominant anchor.</li>
+            <li><b>4 Risk reversal</b> tied to action, not a refundable deposit. <b>5 Objections,</b> already pre-killed.</li>
+            <li><b>6 Urgency</b> that is real and visible: seat cap or timer. <b>7 One step:</b> one link, one instruction.</li>
+            <li>If you keep the call, rename it <b>onboarding</b>, not qualification. The next step for people who are in, not an interview they can fail.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="seg">
+        <div class="time"><span class="tc">90:00&ndash;END</span><span class="dur">Golden goose &amp; push</span></div>
+        <div class="meat">
+          <h3>Land the plane</h3>
+          <ul>
+            <li>Reveal the 1:1 call last, framed as earned.</li>
+            <li>60-second student-results montage, then one instruction. Stop.</li>
+            <li>Q&amp;A until no sales for five minutes, then close. No "life is short" video.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ REWRITES ============ -->
+<section>
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 05 · LINE EDITS</div>
+      <h2>Before and after, in your own moments</h2>
+      <p>The three highest-leverage rewrites, swappable straight into the script.</p>
+    </div>
+    <div class="ba">
+
+      <div class="ba-card">
+        <div class="label">The Price Reveal</div>
+        <div class="ba-row">
+          <div class="before">
+            <div class="tagline">&times; Current</div>
+            <p>"Not 2,35,000, not 1,25,000, just 29,999 plus GST. Pay 1,999, get on the qualification call, money back if you don't qualify."</p>
+          </div>
+          <div class="after">
+            <div class="tagline">&check; Rewrite</div>
+            <p>"The tools alone cost 30,000 a month if you bought them yourself. The cohort, the method, the team, a year of access: 29,999, one time. We take [X] this batch and [N] seats are gone. The button is on your screen. One click, you are in, you start this weekend."</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="ba-card">
+        <div class="label">Urgency</div>
+        <div class="ba-row">
+          <div class="before">
+            <div class="tagline">&times; Current</div>
+            <p>"Decide before 5PM, we buy the tools tonight."</p>
+          </div>
+          <div class="after">
+            <div class="tagline">&check; Rewrite</div>
+            <p>A real seat counter or timer on the slide. "This batch closes at [time] or when the last seat goes. After that the next batch is [date] at [higher price]." Say it only if it is true. Fake urgency is worse than none.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="ba-card">
+        <div class="label">The Closing Asset</div>
+        <div class="ba-row">
+          <div class="before">
+            <div class="tagline">&times; Current</div>
+            <p>The borrowed "life is short, you'll live for the weekend" YouTube video.</p>
+          </div>
+          <div class="after">
+            <div class="tagline">&check; Rewrite</div>
+            <p>A 60-second cut of student wins (the 12 lakh jewelry contract, the 2 lakh music-video project, the viral reel) with on-screen proof, ending on your single instruction.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ MATH ============ -->
+<section class="math">
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 06 · THE NUMBERS</div>
+      <h2>Where the edit takes you</h2>
+      <p>Same 800 showups. The close fixes are the cheapest and fastest, so do them first.</p>
+    </div>
+    <div class="math-grid">
+      <div class="mcard">
+        <div class="pct">NOW · 8%</div>
+        <div class="sales">64</div>
+        <div class="cap">sales today</div>
+      </div>
+      <div class="mcard">
+        <div class="pct">FIX LEAKS 1&amp;2 · ~13%</div>
+        <div class="sales">96&ndash;112</div>
+        <div class="cap">close + stop over-teaching</div>
+      </div>
+      <div class="mcard win">
+        <div class="pct">FULL EDIT · 15&ndash;20%</div>
+        <div class="sales">120&ndash;160</div>
+        <div class="cap">mechanism, beliefs, urgency, proof</div>
+      </div>
+    </div>
+    <p class="kicker">
+      Moving from 64 to 130 sales is roughly an extra <b>19,80,000 in front-end revenue per webinar</b>,
+      before any balance payments. The close fixes cost you nothing but a rewrite.
+    </p>
+  </div>
+</section>
+
+<!-- ============ PRIORITY ============ -->
+<section class="priority">
+  <div class="wrap">
+    <div class="shead">
+      <div class="num">REEL 07 · SHOT LIST</div>
+      <h2>Do these in this order</h2>
+    </div>
+    <div class="plist">
+      <div class="pstep first"><div class="t">Collapse the close to one step<span>Kill or reframe the qualification call. Highest impact.</span></div></div>
+      <div class="pstep"><div class="t">Stop teaching the full how-to<span>Give the aha, not the execution.</span></div></div>
+      <div class="pstep"><div class="t">Add the open<span>Big promise, who it's for and not for, commitment round.</span></div></div>
+      <div class="pstep"><div class="t">Name one big idea and one mechanism<span>Cut eight opportunities down to one method.</span></div></div>
+      <div class="pstep"><div class="t">Rebuild the three secrets as belief-breakers<span>Vehicle, internal, external.</span></div></div>
+      <div class="pstep"><div class="t">Replace told proof with shown proof<span>A screenshot behind every claim.</span></div></div>
+      <div class="pstep"><div class="t">Engineer real urgency<span>A visible timer or seat cap.</span></div></div>
+      <div class="pstep"><div class="t">Cut the credibility breakers<span>Cursing, the cancer remark, the charity-guilt line, live fumbles, the closing video.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Day 2 Conversion Teardown · Built on <b>Dan Henry</b>'s close architecture &middot; Anik macro pacing &middot; The one open question: <b>where is the 8% measured?</b> Send the qualification-call recording to teardown the second close.
+  </div>
+</footer>
+
+</body>
+</html>
